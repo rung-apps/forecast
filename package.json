@@ -1,0 +1,22 @@
+{
+  "name": "forecast",
+  "version": "0.1.0",
+  "description": "Acompanhe a previsão do tempo de onde você estiver.",
+  "main": "index.js",
+  "author": "Rung <suporte@rung.com.br>",
+  "license": "MIT",
+  "dependencies": {
+    "bluebird": "^3.4.7",
+    "ramda": "^0.23.0",
+    "rung-sdk": "^1.0.7",
+    "superagent": "^3.5.0",
+    "superagent-promise": "^1.1.0"
+  },
+  "rung": {
+    "title": "Previsão do tempo",
+    "preview": "<div style=\"font-family:Roboto, sans-serif;text-align:center;font-size:12px\"><img src=\"//cdn.apixu.com/weather/64x64/day/353.png\" height=\"35\" draggable=\"false\"><h3 style=\"margin:0px\">Joinville - 18/05/2017</h3><h3 style=\"margin:0px\">Nublado</h3><p style=\"margin-bottom:0px\">Min: 12.2ºC Máx: 21.2ºC</p></div>"
+  },
+  "devDependencies": {
+    "rung-cli": "^0.3.2"
+  }
+}
