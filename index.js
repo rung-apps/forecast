@@ -3,56 +3,116 @@ import { String as Text, OneOf } from 'rung-sdk/dist/types';
 import Bluebird from 'bluebird';
 import agent from 'superagent';
 import promisifyAgent from 'superagent-promise';
-import { map, mergeAll } from 'ramda';
+import { always, cond, equals, tail, map, join } from 'ramda';
 import moment from 'moment';
 
 const request = promisifyAgent(agent, Bluebird);
-const key = '<<<<< YOUR KEY HERE >>>>>>';
+const key = '1c1d38d2629e4505b0c145613171505';
 const url = `https://api.apixu.com/v1/forecast.json?key=${key}`;
 
 const styles = {
     container: {
         fontFamily: 'Roboto, sans-serif',
-        textAlign: 'center',
-        fontSize: '12px'
+        fontSize: '12px',
+        marginTop: '-3px'
     },
-    noMargin: {
-        margin: '0px'
+    column: {
+        display: 'flex'
     },
-    noMarginBottom: {
-        marginBottom: '0px'
+    icon: {
+        width: '35px'
+    },
+    city: {
+        height: '35px',
+        lineHeight: '35px',
+        fontWeight: 'bold',
+        fontSize: '13px',
+        width: 'calc(100% - 35px)',
+        whiteSpace: 'nowrap',
+        textOverflow: 'ellipsis',
+        overflow: 'hidden'
+    },
+    shortDay: {
+        fontSize: '10px'
+    },
+    weather: {
+        fontSize: '10px'
     }
 };
 
-function createAlert(name, region, day) {
-    const id = name + region + day.date;
+const dayName = cond([
+    [equals(0), always(_('SUN'))],
+    [equals(1), always(_('MON'))],
+    [equals(2), always(_('TUE'))],
+    [equals(3), always(_('WED'))],
+    [equals(4), always(_('THU'))],
+    [equals(5), always(_('FRI'))],
+    [equals(6), always(_('SAT'))]
+]);
 
+function createAlert(name, region, days) {
     return {
-        [id]: {
-            title: `${name}, ${region}`,
-            content: renderContent(name, day),
-            comment: renderComment(day)
+        [name + region]: {
+            title: `${_('Weather forecast for')} ${name}, ${region}`,
+            content: renderContent(name, days),
+            comment: renderComment(name, region, days)
         }
     };
 }
 
-function renderContent(place, { date, day }) {
-    const { maxtemp_c, mintemp_c, condition } = day;
+function renderContent(name, days) {
+    const [firstDay] = days;
+    const { condition, maxtemp_c, mintemp_c } = firstDay.day;
+
     return (
         <div style={ styles.container }>
-            <img src={ condition.icon } height={ 35 } draggable={ false } />
-            <h3 style={ styles.noMargin }>{ place } - { moment(date).format('DD/MM/YYYY') }</h3>
-            <h3 style={ styles.noMargin }>{ condition.text }</h3>
-            <p style={ styles.noMarginBottom }>Min: { mintemp_c }ºC Máx: { maxtemp_c }ºC</p>
+            { /* first column */ }
+            <div style={ styles.column }>
+                <div style={ styles.icon }>
+                    <img src={ condition.icon } height={ 35 } draggable={ false } />
+                </div>
+                <div style={ styles.city } title={ name }>{ name }</div>
+            </div>
+
+            { /* second column */ }
+            <div style={ styles.column }>
+                <div style={ { width: '64px' } } >
+                    <div>▲ { maxtemp_c } °C</div>
+                    <div>▼ { mintemp_c } °C</div>
+                </div>
+                <div style={ { width: 'calc(100% - 64px)' } }>
+                    <div>{ moment(firstDay.date).format('DD/MM/YYYY') }</div>
+                    <div style={ styles.weather }><b>{ condition.text }</b></div>
+                </div>
+            </div>
+
+            { /* third column */ }
+            <div style={ styles.column }>
+                { tail(days).map(({ day, date }) =>
+                    <div style={ { width: 'calc(100% / 6)' } }>
+                        <div>
+                            <img src={ day.condition.icon } style={ { width: '100%' } } draggable={ false } />
+                        </div>
+                        <div style={ styles.shortDay }><b>{ dayName(moment(date).day()) }</b></div>
+                    </div>
+                ).join('') }
+            </div>
         </div>
     );
 }
 
-function renderComment({ date, astro, day }) {
-    const { maxtemp_c, mintemp_c, condition } = day;
-    return `Dia ${moment(date).format('DD/MM/YYYY')}: ${condition.text}, com **mínima** de ${mintemp_c}ºC e **máxima** de ${maxtemp_c}ºC.
-        \n
-        O **sol irá nascer** às ${astro.sunrise} e **se por** às ${astro.sunset}.
+function renderComment(name, region, days) {
+    const imageStyle = 'width: 28px; height: 28px; position: relative; top: 9px;';
+
+    return `**${_('Weather forecast for')} ${name}, ${region}**
+
+        ${join('', map(({ day, date }) => `
+            <img
+                alt=${JSON.stringify(day.condition.text)}
+                src=${JSON.stringify(day.condition.icon)}
+                style=${JSON.stringify(imageStyle)}
+            /> ${moment(date).format('DD/MM/YYYY')}: ${day.condition.text}. ${_('Min')}: ${day.mintemp_c} °C | ${_('Max')}: ${day.maxtemp_c} °C
+        `, days))}
     `;
 }
 
@@ -65,15 +125,12 @@ function main(context, done) {
         .then(({ body }) => {
             const { location, forecast } = body;
             const { name, region } = location;
-            const days = forecast.forecastday;
+            const { forecastday: days } = forecast;
 
-            const alerts = mergeAll(map(
-                day => createAlert(name, region, day),
-                days
-            ));
-            done(alerts);
+            const alert = createAlert(name, region, days);
+            done({ alerts: alert });
         })
-        .catch(() => done([]));
+        .catch(() => done({ alerts: {} }));
 }
 
 const languages = [
@@ -97,16 +154,16 @@ const languages = {
     'Vietnamese': 'vi', 'Wu (Shanghainese)': 'zh_wuu', 'Xiang': 'zh_hsn',
     'Yue (Cantonese)': 'zh_yue', 'Zulu': 'zu'
 };
-
  */
 
 const params = {
     place: {
-        description: 'De qual cidade você gostaria de acompanhar as previsões do tempo?',
-        type: Text
+        description: _('Which city would you like to follow weather forecasts for?'),
+        type: Text,
+        required: true
     },
     language: {
-        description: 'Idioma',
+        description: _('Language'),
         type: OneOf(languages),
         default: 'pt'
     }
