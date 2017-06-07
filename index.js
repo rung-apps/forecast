@@ -7,7 +7,7 @@ import { always, cond, equals, tail, map, join } from 'ramda';
 import moment from 'moment';
 
 const request = promisifyAgent(agent, Bluebird);
-const key = '1c1d38d2629e4505b0c145613171505';
+const key = '-----------YOUR KEY-----------';
 const url = `https://api.apixu.com/v1/forecast.json?key=${key}`;
 
 const styles = {
