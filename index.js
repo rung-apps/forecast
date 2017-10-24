@@ -1,14 +1,19 @@
 import { create } from 'rung-sdk';
-import { String as Text, OneOf } from 'rung-sdk/dist/types';
+import { Location } from 'rung-cli/dist/types';
 import Bluebird from 'bluebird';
 import agent from 'superagent';
 import promisifyAgent from 'superagent-promise';
-import { always, cond, equals, tail, map, join } from 'ramda';
+import {
+    tail,
+    map,
+    join,
+    take
+} from 'ramda';
 import moment from 'moment';
 
 const request = promisifyAgent(agent, Bluebird);
-const key = '-----------YOUR KEY-----------';
-const url = `https://api.apixu.com/v1/forecast.json?key=${key}`;
+const key = '------YOUR API KEY------';
+const url = `https://api.darksky.net/forecast/${key}`;
 
 const styles = {
     container: {
@@ -30,7 +35,8 @@ const styles = {
         width: 'calc(100% - 35px)',
         whiteSpace: 'nowrap',
         textOverflow: 'ellipsis',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        textTransform: 'capitalize'
     },
     shortDay: {
         fontSize: '10px'
@@ -40,60 +46,74 @@ const styles = {
     }
 };
 
-const dayName = cond([
-    [equals(0), always(_('SUN'))],
-    [equals(1), always(_('MON'))],
-    [equals(2), always(_('TUE'))],
-    [equals(3), always(_('WED'))],
-    [equals(4), always(_('THU'))],
-    [equals(5), always(_('FRI'))],
-    [equals(6), always(_('SAT'))]
-]);
+const condition = {
+    'clear-day': '//cdn.apixu.com/weather/64x64/day/113.png',
+    'clear-night': '//cdn.apixu.com/weather/64x64/night/113.png',
+    'partly-cloudy-day': '//cdn.apixu.com/weather/64x64/day/116.png',
+    'partly-cloudy-night': '//cdn.apixu.com/weather/64x64/night/116.png',
+    cloudy: '//cdn.apixu.com/weather/64x64/day/119.png',
+    rain: '//cdn.apixu.com/weather/64x64/day/296.png',
+    sleet: '//cdn.apixu.com/weather/64x64/day/263.png',
+    snow: '//cdn.apixu.com/weather/64x64/day/338.png',
+    wind: '//i.imgur.com/MzkSz95.png',
+    fog: '//cdn.apixu.com/weather/64x64/day/248.png'
+};
 
-function createAlert(name, region, days) {
+function createAlert(place, days, unity) {
     return {
-        [name + region]: {
-            title: `${_('Weather forecast for')} ${name}, ${region}`,
-            content: renderContent(name, days),
-            comment: renderComment(name, region, days)
+        [place]: {
+            title: `${_('Weather forecast for')} ${place}`,
+            content: renderContent(place, days, unity),
+            comment: renderComment(place, days, unity)
         }
     };
 }
 
-function renderContent(name, days) {
-    const [firstDay] = days;
-    const { condition, maxtemp_c, mintemp_c } = firstDay.day;
+function renderContent(place, days, unity) {
+    const firstDay = days[0];
+    const { time, summary, temperatureMax, temperatureMin, icon } = firstDay;
+    const dayName = unixTime => moment.unix(unixTime).format('ddd').toUpperCase();
 
     return (
         <div style={ styles.container }>
             { /* first column */ }
             <div style={ styles.column }>
                 <div style={ styles.icon }>
-                    <img src={ condition.icon } height={ 35 } draggable={ false } />
+                    <img src={ condition[icon] } height={ 35 } draggable={ false } />
                 </div>
-                <div style={ styles.city } title={ name }>{ name }</div>
+                <div style={ styles.city } title={ place }>{ place }</div>
             </div>
 
             { /* second column */ }
             <div style={ styles.column }>
-                <div style={ { width: '64px' } } >
-                    <div>▲ { maxtemp_c } °C</div>
-                    <div>▼ { mintemp_c } °C</div>
+                <div style={ { width: '50px' } } >
+                    <div>▲ { `${Math.round(temperatureMax)} ${unity}` }</div>
+                    <div>▼ { `${Math.round(temperatureMin)} ${unity}` }</div>
                 </div>
-                <div style={ { width: 'calc(100% - 64px)' } }>
-                    <div>{ moment(firstDay.date).format('DD/MM/YYYY') }</div>
-                    <div style={ styles.weather }><b>{ condition.text }</b></div>
+                <div style={ { width: 'calc(100% - 50px)' } }>
+                    <div>{ moment.unix(time).format('DD/MM/YYYY') }</div>
+                    <div style={ styles.weather }>
+                        <b>{ summary }</b>
+                    </div>
                 </div>
             </div>
 
             { /* third column */ }
             <div style={ styles.column }>
-                { tail(days).map(({ day, date }) =>
+                { tail(days).map(({ time, icon }) =>
                     <div style={ { width: 'calc(100% / 6)' } }>
-                        <div>
-                            <img src={ day.condition.icon } style={ { width: '100%' } } draggable={ false } />
+                        <div
+                            style={ {
+                                width: '20px',
+                                height: '20px',
+                                backgroundImage: `url(${condition[icon]})`,
+                                backgroundSize: 'cover'
+                            } }
+                            draggable={ false }>
                         </div>
-                        <div style={ styles.shortDay }><b>{ dayName(moment(date).day()) }</b></div>
+                        <div style={ styles.shortDay }>
+                            <b>{ _(dayName(time)) }</b>
+                        </div>
                     </div>
                 ).join('') }
             </div>
@@ -101,72 +121,117 @@ function renderContent(name, days) {
     );
 }
 
-function renderComment(name, region, days) {
+function renderComment(place, days, unity) {
     const imageStyle = 'width: 28px; height: 28px; position: relative; top: 9px;';
+    const commentText = (time, summary, temperatureMin, temperatureMax) => {
+        const day = moment.unix(time).format('DD/MM/YYYY');
+        const min = `${Math.round(temperatureMin)} ${unity}`;
+        const max = `${Math.round(temperatureMax)} ${unity}`;
+        return `${day}: ${summary}. ${_('Min')}: ${min} | ${_('Max')}: ${max}`;
+    };
 
-    return `**${_('Weather forecast for')} ${name}, ${region}**
+    return `**${_('Weather forecast for')} ${place}**
 
-        ${join('', map(({ day, date }) => `
+        ${join('', map(({ time, summary, temperatureMin, temperatureMax, icon }) => `
             <img
-                alt=${JSON.stringify(day.condition.text)}
-                src=${JSON.stringify(day.condition.icon)}
+                alt=${JSON.stringify(summary)}
+                src=${JSON.stringify(condition[icon])}
                 style=${JSON.stringify(imageStyle)}
-            /> ${moment(date).format('DD/MM/YYYY')}: ${day.condition.text}. ${_('Min')}: ${day.mintemp_c} °C | ${_('Max')}: ${day.maxtemp_c} °C
+            /> ${commentText(time, summary, temperatureMin, temperatureMax)}
         `, days))}
     `;
 }
 
 function main(context, done) {
-    const { place: q, language } = context.params;
-    const lang = language === 'en' ? '' : language;
+    const { place } = context.params;
 
-    return request.get(url)
-        .query({ q, days: 7, lang })
+    return request.get(`https://darksky.net/geo?q=${place}`)
         .then(({ body }) => {
-            const { location, forecast } = body;
-            const { name, region } = location;
-            const { forecastday: days } = forecast;
-
-            const alert = createAlert(name, region, days);
-            done({ alerts: alert });
+            return request.get(`${url}/${body.latitude},${body.longitude}`)
+                .query({
+                    exclude: 'currently,minutely,hourly',
+                    lang: take(2, context.locale),
+                    units: 'auto'
+                })
+                .then(({ body }) => {
+                    const days = take(7, body.daily.data);
+                    const { summary } = body.daily;
+                    const size = summary.search('°');
+                    const unity = summary.slice(size, size + 2);
+                    const alert = createAlert(place, days, unity);
+                    done({ alerts: alert });
+                })
+                .catch(() => done({ alerts: {} }));
         })
         .catch(() => done({ alerts: {} }));
 }
 
-const languages = [
-    'ar', 'bn', 'bg', 'zh', 'zh_tw', 'cs', 'da', 'nl', 'en', 'fi',
-    'fr', 'de', 'el', 'hi', 'hu', 'it', 'ja', 'jv', 'ko', 'zh_cmn',
-    'mr', 'pl', 'pt', 'pa', 'ro', 'ru', 'sr', 'si', 'sk', 'es',
-    'sv', 'ta', 'te', 'tr', 'uk', 'ur', 'vi', 'zh_wuu', 'zh_hsn',
-    'zh_yue', 'zu'
-];
-
-/* LANGUAGES WITH LABELS
-const languages = {
-    'Arabic': 'ar', 'Bengali': 'bn', 'Bulgarian': 'bg', 'Chinese Simplified': 'zh',
-    'Chinese Traditional': 'zh_tw', 'Czech': 'cs', 'Danish': 'da', 'Dutch': 'nl',
-    'English': 'en', 'Finnish': 'fi', 'French': 'fr', 'German': 'de', 'Greek': 'el',
-    'Hindi': 'hi', 'Hungarian': 'hu', 'Italian': 'it', 'Japanese': 'ja', 'Javanese': 'jv',
-    'Korean': 'ko', 'Mandarin': 'zh_cmn', 'Marathi': 'mr', 'Polish': 'pl',
-    'Portuguese': 'pt', 'Punjabi': 'pa', 'Romanian': 'ro', 'Russian': 'ru',
-    'Serbian': 'sr', 'Sinhalese': 'si', 'Slovak': 'sk', 'Spanish': 'es', 'Swedish': 'sv',
-    'Tamil': 'ta', 'Telugu': 'te', 'Turkish': 'tr', 'Ukrainian': 'uk', 'Urdu': 'ur',
-    'Vietnamese': 'vi', 'Wu (Shanghainese)': 'zh_wuu', 'Xiang': 'zh_hsn',
-    'Yue (Cantonese)': 'zh_yue', 'Zulu': 'zu'
-};
- */
-
 const params = {
     place: {
         description: _('Which city would you like to follow weather forecasts for?'),
-        type: Text,
+        type: Location,
         required: true
-    },
-    language: {
-        description: _('Language'),
-        type: OneOf(languages),
-        default: 'pt'
     }
 };
 
-export default create(main, { params, primaryKey: true });
+// HTML here is static because there are 5k lines of JSON to mock. Impossible
+// until we build the Rung file system
+const preview = `
+<div style="font-family:Roboto, sans-serif;font-size:12px;margin-top:-3px">
+   <div style="display:flex">
+      <div style="width:35px"><img src="//cdn.apixu.com/weather/64x64/day/176.png" height=35 draggable=false /></div>
+      <div style="height:35px;line-height:35px;font-weight:bold;font-size:13px;width:calc(100% - 35px);white-space:nowrap;text-overflow:ellipsis;overflow:hidden" title="Joinville">Joinville</div>
+   </div>
+   <div style="display:flex">
+      <div style="width:64px">
+         <div>▲ 21.2 °C</div>
+         <div>▼ 18.2 °C</div>
+      </div>
+      <div style="width:calc(100% - 64px)">
+         <div>07/06/2017</div>
+         <div style="font-size:10px"><b>Possibilidade de chuva irregular</b></div>
+      </div>
+   </div>
+   <div style="display:flex">
+      <div style="width:calc(100% / 6)">
+         <div><img src="//cdn.apixu.com/weather/64x64/day/113.png" style="width:100%" draggable=false /></div>
+         <div style="font-size:10px"><b>QUI</b></div>
+      </div>
+      <div style="width:calc(100% / 6)">
+         <div><img src="//cdn.apixu.com/weather/64x64/day/119.png" style="width:100%" draggable=false /></div>
+         <div style="font-size:10px"><b>SEX</b></div>
+      </div>
+      <div style="width:calc(100% / 6)">
+         <div><img src="//cdn.apixu.com/weather/64x64/day/113.png" style="width:100%" draggable=false /></div>
+         <div style="font-size:10px"><b>SÁB</b></div>
+      </div>
+      <div style="width:calc(100% / 6)">
+         <div><img src="//cdn.apixu.com/weather/64x64/day/113.png" style="width:100%" draggable=false /></div>
+         <div style="font-size:10px"><b>DOM</b></div>
+      </div>
+      <div style="width:calc(100% / 6)">
+         <div><img src="//cdn.apixu.com/weather/64x64/day/116.png" style="width:100%" draggable=false /></div>
+         <div style="font-size:10px"><b>SEG</b></div>
+      </div>
+      <div style="width:calc(100% / 6)">
+         <div><img src="//cdn.apixu.com/weather/64x64/day/113.png" style="width:100%" draggable=false /></div>
+         <div style="font-size:10px"><b>TER</b></div>
+      </div>
+   </div>
+</div>
+`;
+
+export default create(main, {
+    params,
+    primaryKey: true,
+    title: _('Weather forecast'),
+    description: _('Track the weather forecast from wherever you are.'),
+    preview,
+    sidebar: {
+        priority: false,
+        situation: false,
+        startDate: false,
+        endDate: false
+    },
+    executionPeriod: '0 0 * * *'
+});
