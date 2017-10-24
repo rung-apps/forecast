@@ -1,8 +1,6 @@
 {
   "name": "forecast",
-  "version": "0.1.5",
-  "description": "Track the weather forecast from wherever you are.",
-  "main": "index.js",
+  "version": "0.2.5",
   "author": "Rung <suporte@rung.com.br>",
   "license": "MIT",
   "dependencies": {
@@ -13,11 +11,7 @@
     "superagent": "^3.5.0",
     "superagent-promise": "^1.1.0"
   },
-  "rung": {
-    "title": "Previsão do tempo",
-    "preview": "<div style=\"font-family:Roboto, sans-serif;font-size:12px\"><div style=\"display:flex\"><div style=\"width:35px\"><img src=\"//cdn.apixu.com/weather/64x64/day/113.png\" height=\"35\" draggable=\"false\"></div><div style=\"height:35px;line-height:35px;font-weight:bold;font-size:13px;width:calc(100% - 35px);white-space:nowrap;text-overflow:ellipsis;overflow:hidden\" title=\"Joinville\">Joinville</div></div><div style=\"display:flex\"><div style=\"width:64px\"><div>▲ 21.2 °C</div><div>▼ 15.2 °C</div></div><div style=\"width:calc(100% - 64px)\"><div>22/05/2017</div><div><b>Sol</b></div></div></div><div style=\"display:flex\"><div style=\"width:calc(100% / 6)\"><div><img src=\"//cdn.apixu.com/weather/64x64/day/176.png\" style=\"width:100%\" draggable=\"false\"></div><div style=\"font-size:10px\"><b>TER</b></div></div><div style=\"width:calc(100% / 6)\"><div><img src=\"//cdn.apixu.com/weather/64x64/day/263.png\" style=\"width:100%\" draggable=\"false\"></div><div style=\"font-size:10px\"><b>QUA</b></div></div><div style=\"width:calc(100% / 6)\"><div><img src=\"//cdn.apixu.com/weather/64x64/day/113.png\" style=\"width:100%\" draggable=\"false\"></div><div style=\"font-size:10px\"><b>SUI</b></div></div><div style=\"width:calc(100% / 6)\"><div><img src=\"//cdn.apixu.com/weather/64x64/day/113.png\" style=\"width:100%\" draggable=\"false\"></div><div style=\"font-size:10px\"><b>SEX</b></div></div><div style=\"width:calc(100% / 6)\"><div><img src=\"//cdn.apixu.com/weather/64x64/day/113.png\" style=\"width:100%\" draggable=\"false\"></div><div style=\"font-size:10px\"><b>SÁB</b></div></div><div style=\"width:calc(100% / 6)\"><div><img src=\"//cdn.apixu.com/weather/64x64/day/113.png\" style=\"width:100%\" draggable=\"false\"></div><div style=\"font-size:10px\"><b>DOM</b></div></div></div></div>"
-  },
   "devDependencies": {
-    "rung-cli": "^0.4.3"
+    "rung-cli": "^0.9.4"
   }
 }
