@@ -225,7 +225,7 @@ export default create(main, {
     params,
     primaryKey: true,
     title: _('Weather forecast'),
-    description: _('Track the weather forecast from wherever you are.'),
+    description: _('Be informed about possible changes in time and do not let them get in the way of your routine!'),
     preview,
     sidebar: {
         priority: false,

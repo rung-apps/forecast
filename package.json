@@ -1,6 +1,6 @@
 {
   "name": "forecast",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "author": "Rung <suporte@rung.com.br>",
   "license": "MIT",
   "dependencies": {
@@ -12,6 +12,6 @@
     "superagent-promise": "^1.1.0"
   },
   "devDependencies": {
-    "rung-cli": "^0.9.4"
+    "rung-cli": "^1.2.1"
   }
 }
